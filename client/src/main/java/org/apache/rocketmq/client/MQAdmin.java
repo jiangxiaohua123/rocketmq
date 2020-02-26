@@ -55,6 +55,13 @@ public interface MQAdmin {
      * @param timestamp from when in milliseconds.
      * @return offset
      */
+    /**
+            * 根据时间戳从队列中查找其偏移量
+     * @param mq
+     * @param timestamp
+     * @return
+     * @throws MQClientException
+     */
     long searchOffset(final MessageQueue mq, final long timestamp) throws MQClientException;
 
     /**

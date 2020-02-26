@@ -37,5 +37,22 @@ public class MessageSysFlag {
     public static int clearCompressedFlag(final int flag) {
         return flag & (~COMPRESSED_FLAG);
     }
+    
+    /**
+            * 打印数值
+     * @param args
+     */
+    public static void main(String[] args) {
+		System.out.println(MessageSysFlag.COMPRESSED_FLAG);
+		System.out.println(MessageSysFlag.MULTI_TAGS_FLAG);
+		System.out.println(MessageSysFlag.TRANSACTION_NOT_TYPE);
+		System.out.println(MessageSysFlag.TRANSACTION_PREPARED_TYPE);
+		System.out.println(MessageSysFlag.TRANSACTION_COMMIT_TYPE);
+		System.out.println(MessageSysFlag.TRANSACTION_ROLLBACK_TYPE);
+		System.out.println(MessageSysFlag.BORNHOST_V6_FLAG);
+		System.out.println(MessageSysFlag.STOREHOSTADDRESS_V6_FLAG);
+		
+		
+	}
 
 }
