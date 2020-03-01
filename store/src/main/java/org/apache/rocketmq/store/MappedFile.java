@@ -200,9 +200,11 @@ public class MappedFile extends ReferenceResource {
         assert messageExt != null;
         assert cb != null;
 
+        //当前这个MappedFile的写入位置
         int currentPos = this.wrotePosition.get();
 
         if (currentPos < this.fileSize) {
+        	// 这个Buffer和咱们的同步异步刷盘相关（异步刷盘还有两种模式可供选择）
             ByteBuffer byteBuffer = writeBuffer != null ? writeBuffer.slice() : this.mappedByteBuffer.slice();
             byteBuffer.position(currentPos);
             AppendMessageResult result;
@@ -213,6 +215,7 @@ public class MappedFile extends ReferenceResource {
             } else {
                 return new AppendMessageResult(AppendMessageStatus.UNKNOWN_ERROR);
             }
+            //刷新写入的位置
             this.wrotePosition.addAndGet(result.getWroteBytes());
             this.storeTimestamp = result.getStoreTimestamp();
             return result;

@@ -165,6 +165,7 @@ public abstract class AbstractSendMessageProcessor implements NettyRequestProces
     protected RemotingCommand msgCheck(final ChannelHandlerContext ctx,
         final SendMessageRequestHeader requestHeader, final RemotingCommand response) {
     	//检查 broker 是否有写入权限
+    	//Topic的权限，可以禁止读和写，在运维RocketMQServer时非常有用，比如顺序消息的扩容和缩容
         if (!PermName.isWriteable(this.brokerController.getBrokerConfig().getBrokerPermission())
             && this.brokerController.getTopicConfigManager().isOrderTopic(requestHeader.getTopic())) {
             response.setCode(ResponseCode.NO_PERMISSION);
