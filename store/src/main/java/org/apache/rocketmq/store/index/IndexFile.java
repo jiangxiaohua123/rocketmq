@@ -29,10 +29,13 @@ import org.apache.rocketmq.store.MappedFile;
 
 public class IndexFile {
     private static final InternalLogger log = InternalLoggerFactory.getLogger(LoggerName.STORE_LOGGER_NAME);
+    //每个hash槽的大小
     private static int hashSlotSize = 4;
     private static int indexSize = 20;
     private static int invalidIndex = 0;
+    //hash槽数量
     private final int hashSlotNum;
+    //索引允许的最大条目数
     private final int indexNum;
     private final MappedFile mappedFile;
     private final FileChannel fileChannel;
@@ -89,10 +92,21 @@ public class IndexFile {
         return this.mappedFile.destroy(intervalForcibly);
     }
 
+    /**
+     * RocketMQ将消息索引键与消息偏移量映射关系写入到IndexFile
+     * @param key   消息索引
+     * @param phyOffset   消息物理偏移量
+     * @param storeTimestamp   消息存储时间
+     * @return
+     */
     public boolean putKey(final String key, final long phyOffset, final long storeTimestamp) {
+    	// 如果当前已使用条目大于等于允许最大条目数时，返回false
         if (this.indexHeader.getIndexCount() < this.indexNum) {
+        	//1、根据key算出key的hashcode
             int keyHash = indexKeyHashMethod(key);
+            //keyhash对hash槽数量取余定位到hashcode对应的hash槽下标
             int slotPos = keyHash % this.hashSlotNum;
+            //hashcode对应的hash槽的物理地址为IndexHeader头部（40字节）加上下标乘以每个hash槽的大小（4字节）
             int absSlotPos = IndexHeader.INDEX_HEADER_SIZE + slotPos * hashSlotSize;
 
             FileLock fileLock = null;
@@ -101,13 +115,15 @@ public class IndexFile {
 
                 // fileLock = this.fileChannel.lock(absSlotPos, hashSlotSize,
                 // false);
+            	//2、读取hash槽中存储的数据，如果hash槽存储的数据小余0或大于当前索引文件中的索引条目格式，则将slotValue设置为0
                 int slotValue = this.mappedByteBuffer.getInt(absSlotPos);
                 if (slotValue <= invalidIndex || slotValue > this.indexHeader.getIndexCount()) {
                     slotValue = invalidIndex;
                 }
 
+                //3、计算待存储消息的时间戳与第一条消息时间戳的差值
                 long timeDiff = storeTimestamp - this.indexHeader.getBeginTimestamp();
-
+                //转换成秒
                 timeDiff = timeDiff / 1000;
 
                 if (this.indexHeader.getBeginTimestamp() <= 0) {
@@ -118,6 +134,9 @@ public class IndexFile {
                     timeDiff = 0;
                 }
 
+                //4、将条目信息存储在IndexFile中
+                //计算新添加条目的初始物理偏移量，等于头部字节长度+hash槽数量 * 单个hash槽大小（4个字节） +
+                //当前Index条目的个数 * 单个Index条目大小（20个字节）
                 int absIndexPos =
                     IndexHeader.INDEX_HEADER_SIZE + this.hashSlotNum * hashSlotSize
                         + this.indexHeader.getIndexCount() * indexSize;
@@ -129,6 +148,7 @@ public class IndexFile {
 
                 this.mappedByteBuffer.putInt(absSlotPos, this.indexHeader.getIndexCount());
 
+                //更新文件索引头信息。如果当前文件只包含一个条目，更新beginPhyOffsety与beginTimestamp
                 if (this.indexHeader.getIndexCount() <= 1) {
                     this.indexHeader.setBeginPhyOffset(phyOffset);
                     this.indexHeader.setBeginTimestamp(storeTimestamp);
@@ -161,6 +181,8 @@ public class IndexFile {
 
     public int indexKeyHashMethod(final String key) {
         int keyHash = key.hashCode();
+        //当keyHash=Integer.MAX_VALUE+1时，Math.abs返回负数
+        //比如  Math.abs("polygenelubricants".hashCode()) < 0
         int keyHashPositive = Math.abs(keyHash);
         if (keyHashPositive < 0)
             keyHashPositive = 0;
@@ -186,6 +208,15 @@ public class IndexFile {
         return result;
     }
 
+    /**
+     * RocketMQ根据索引key查找消息的实现方法
+     * @param phyOffsets   查找到的消息物理偏移量
+     * @param key    索引key
+     * @param maxNum  本次查找最大消息条数
+     * @param begin   开始时间戳
+     * @param end     结束时间戳
+     * @param lock
+     */
     public void selectPhyOffset(final List<Long> phyOffsets, final String key, final int maxNum,
         final long begin, final long end, boolean lock) {
         if (this.mappedFile.hold()) {

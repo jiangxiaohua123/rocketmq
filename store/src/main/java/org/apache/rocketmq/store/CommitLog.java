@@ -1242,7 +1242,7 @@ public class CommitLog {
         // File at the end of the minimum fixed length empty
         private static final int END_FILE_MIN_BLANK_LENGTH = 4 + 4;
         /**
-                       * 存储在内存中的消息编号字节Buffer
+         * 存储在内存中的消息编号字节Buffer
          */
         private final ByteBuffer msgIdMemory;
         
